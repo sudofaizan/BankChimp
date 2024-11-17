@@ -17,4 +17,4 @@ jobs:
     - name: Build the Docker image
       run: docker build -t dexterquazi/bankchimp .   
     - name: Docker Login
-      run: docker login -u ${{secrets.DH_USERNAME}} -p "${{secrets.DH_PASSWORD}}"
+      run: docker login -u "${{secrets.DH_USERNAME}}" -p "${{secrets.DH_PASSWORD}}"
