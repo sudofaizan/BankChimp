@@ -20,6 +20,7 @@ const SPREADSHEET_ID = '1mdcN_gJG46wzApj2p_ci55BSq_l4p-dwcJznqPRkt78';
 const SHEET_NAME = 'Sheet1'; // Replace with your sheet name
 
 // POST endpoint to handle SMS data
+
 app.post('/message', async (req, res) => {
   try {
     const { message } = req.body;
@@ -77,6 +78,9 @@ app.post('/message', async (req, res) => {
   }
 });
 
+app.get('/health', async (req, res) => {
+        res.status(200).send({ message: 'Health OK' });
+}); 
 // Start the server
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
