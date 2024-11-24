@@ -1,89 +1,141 @@
 const express = require('express');
-const bodyParser = require('body-parser');
+const dotenv = require('dotenv');
+dotenv.config();
+const app = express();
+const PORT = 80;
+//start of google api config
 const { google } = require('googleapis');
 const fs = require('fs');
 
-const app = express();
-const PORT = 80;
-
-app.use(bodyParser.json());
-
-// Load Google Sheets credentials
 const credentials = JSON.parse(fs.readFileSync('credentials.json'));
+console.log(credentials);
+let TRANS_NAME = "NILL"
+let TRANS_DATE = "NILL"
+let TRANS_TYPE = "NILL"
+let TRANS_AMOUNT = "NILL"
+let TRANS_TIME = "NILL"
+let values = [ 
+    [TRANS_NAME, TRANS_DATE, TRANS_TIME, TRANS_AMOUNT]
+];
 const client = new google.auth.GoogleAuth({
-  credentials: credentials,
-  scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+    credentials: credentials,
+    scopes: ['https://www.googleapis.com/auth/spreadsheets'],
 });
-const sheets = google.sheets({ version: 'v4', auth: client });
 
 const SPREADSHEET_ID = '1mdcN_gJG46wzApj2p_ci55BSq_l4p-dwcJznqPRkt78';
-const SHEET_NAME = 'Sheet1'; // Replace with your sheet name
+const SHEET_NAME = 'Sheet2';
 
-// Function to sanitize data by removing unnecessary formatting
-const sanitizeValue = (value) => value?.trim() || '';
+//end of google api config
 
-// POST endpoint to handle SMS data
+// Middleware to parse JSON request bodies
+app.use(express.json());
+
+
+async function logTransaction() {
+    
+    try {
+        const authClient = await client.getClient(); // Get the authenticated client
+        const sheets = google.sheets({ version: 'v4', auth: authClient });
+        await sheets.spreadsheets.values.append({
+            spreadsheetId: SPREADSHEET_ID,
+            range: `${SHEET_NAME}!A:D`,
+            valueInputOption: 'USER_ENTERED',
+            resource: { values },
+        });
+
+        console.log('Transaction logged successfully');
+    } catch (error) {
+        console.error('Error logging transaction:', error);
+    }
+}
+
+let lastline = 'nill';
+async function getLastLine() {
+    try {
+        const authClient = await client.getClient();
+        const sheets = google.sheets({ version: 'v4', auth: authClient });
+
+        // Step 1: Fetch all rows
+        const response = await sheets.spreadsheets.values.get({
+            spreadsheetId: SPREADSHEET_ID,
+            range: `${SHEET_NAME}!A:Z`, // Adjust column range based on your data
+        });
+
+        const rows = response.data.values || [];
+        if (rows.length === 0) {
+            console.log('No data found in the spreadsheet.');
+            return;
+        }
+
+        // Step 2: Access the last row
+        const lastRow = rows[rows.length - 1];
+        console.log('Last Row:', rows.length);
+        lastline = rows.length;
+
+        return rows.length;
+    } catch (error) {
+        console.error('Error retrieving last row:', error);
+    }
+}
+
 app.post('/message', async (req, res) => {
-  try {
-    const { message } = req.body;
 
-    // Split message into lines and extract fields
-    const lines = message.split('\n').map((line) => line.trim());
-    if (lines.length < 5) {
-      return res.status(400).send({ error: 'Invalid SMS format' });
-    }
-
-    // Extract details from the SMS
-    const amount = lines[0].match(/INR (\d+\.\d+)/)?.[1]; // Extract numeric amount after INR
-    const accountNumber = lines[1].match(/A\/c no\. (.+)/)?.[1];
-    const [date, time] = lines[2].split(',').map((item) => item.trim());
-    const transactionDetails = lines[3].split('/'); // Extract parts of the transaction line
-    const senderName = transactionDetails[transactionDetails.length - 1]; // Assuming name is at the end
-    const bank = lines[5]?.trim() || 'Unknown Bank';
-
-    if (!amount || !accountNumber || !date || !time || !senderName) {
-      return res.status(400).send({ error: 'Unable to parse SMS fields' });
-    }
-
-    // Prepare the transaction data for saving
-    const transactionData = {
-      date: sanitizeValue(date),
-      time: sanitizeValue(time),
-      amount: sanitizeValue(amount),
-      sender_name: sanitizeValue(senderName),
-    };
-
-    // Prepare data to append to Google Sheet
-    const values = [
-      [
-        transactionData.date,
-        transactionData.time,
-        transactionData.amount,
-        transactionData.sender_name,
-      ],
-    ];
-
-    // Append data to Google Sheet with USER_ENTERED option
-    await sheets.spreadsheets.values.append({
-      spreadsheetId: SPREADSHEET_ID,
-      range: `${SHEET_NAME}!A:A`, // Ensure data is appended at the end of the sheet
-      valueInputOption: 'USER_ENTERED', // Enable automatic data interpretation
-      resource: { values },
-    });
-
-    console.log('Transaction logged successfully:', transactionData);
-    res.send({ message: 'Transaction logged successfully', data: transactionData });
-  } catch (error) {
-    console.error('Error logging transaction:', error);
-    res.status(500).send({ error: 'Failed to log transaction' });
-  }
+    const TOKEN = req.headers.authorization;
+    const TOKEN_ENV = process.env.API_TOKEN;
+    if ( TOKEN !== `Bearer ${TOKEN_ENV}`)
+    {
+        console.log('ERROR:'+new Date().toUTCString()+` Invalid Token Used ${TOKEN}`) 
+        return res.status(498).send('Invalid or missing Auth Token');
+    }
+    try {
+        const { message } = req.body; // Accessing the parsed JSON body
+        if (message.includes('debit'))
+            {
+                TRANS_TYPE="Debit"
+                TRANS_AMOUNT = message.match(/INR (\d+\.\d{2})/)?.[1];
+                TRANS_DATE = message.match(/\d{2}\-\d{2}\-\d{2}/)?.[0];
+                TRANS_TIME = message.match(/\d{2}\:\d{2}\:\d{2}/)?.[0];   
+                TRANS_NAME = message.match(/\W\d{12}\W(.+)\n/)?.[1];
+                console.log('INFO: '+ new Date().toUTCString()+' Debit log, AMOUNT: '+TRANS_AMOUNT+' Name: '+TRANS_NAME);
+                res.status(200).send("Success");
+                lastline = await getLastLine();
+                lastline=lastline+1;
+                TRANS_SPECIAL_SHEET_FUNCTION=`=SUMIFS(E2:E, B2:B, B${lastline}, A2:A, A${lastline})`
+                values = [
+                    [TRANS_TYPE,TRANS_NAME,TRANS_DATE,TRANS_TIME,TRANS_AMOUNT,TRANS_SPECIAL_SHEET_FUNCTION]
+                ];
+                logTransaction();
+            }
+        if (message.includes('credit'))
+            {                
+                TRANS_TYPE="Credit"
+                TRANS_AMOUNT = message.match(/INR (\d+\.\d{2})/)?.[1];
+                TRANS_DATE = message.match(/\d{2}\-\d{2}\-\d{2}/)?.[0];
+                TRANS_TIME = message.match(/\d{2}\:\d{2}\:\d{2}/)?.[0];
+                TRANS_NAME = message.match(/-\s\w+\W(\w+)\W/)?.[1];
+                console.log('INFO: '+ new Date().toUTCString()+' Credit log, AMOUNT: '+TRANS_AMOUNT+' Name: '+TRANS_NAME);
+                res.status(200).send("Success");
+                lastline = await getLastLine();
+                lastline=lastline+1;
+                TRANS_SPECIAL_SHEET_FUNCTION=`=SUMIFS(E2:E, B2:B, B${lastline}, A2:A, A${lastline})`
+                values = [
+                    [TRANS_TYPE,TRANS_NAME,TRANS_DATE,TRANS_TIME,TRANS_AMOUNT,TRANS_SPECIAL_SHEET_FUNCTION]
+                ];
+                logTransaction(); 
+            }
+        
+    } catch (error) {
+        console.error('Error logging transaction:', error);
+        res.status(500).send({ error: 'Failed to log transaction' });
+    }
 });
 
-app.get('/health', async (req, res) => {
-  res.status(200).send('Health OK');
-});
+app.get('/health/full', async (req, res) => {
+    res.status(200).send("Health OK!");
+    console.log('INFO: '+new Date().toUTCString()+' Healthcheck probe')
+}); //Func for Healthcheck
 
-// Start the server
+
 app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+    console.log(`Server running on http://localhost:${PORT}`);
 });

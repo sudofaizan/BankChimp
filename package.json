@@ -1,17 +1,17 @@
 {
-  "name": "bankchimp",
+  "name": "test",
   "version": "1.0.0",
-  "main": "app.js",
+  "main": "test.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
-  "author": "",
+  "author": "sudofaizan",
   "license": "ISC",
-  "description": "",
   "dependencies": {
     "body-parser": "^1.20.3",
+    "dotenv": "^16.4.5",
     "express": "^4.21.1",
     "googleapis": "^144.0.0"
-  }
+  },
+  "description": ""
 }
