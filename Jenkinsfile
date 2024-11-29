@@ -1,8 +1,8 @@
 pipeline {
  agent {
     node {
-        label 'my-defined-label'
-        customWorkspace '/some/other/path'
+        label 'docker'
+        customWorkspace '/'
     }
 }
 
