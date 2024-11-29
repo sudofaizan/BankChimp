@@ -1,10 +1,10 @@
 pipeline {
-    agent any
+    agent docker
 
     stages {
         stage('Build') {
             steps {
-                sh "ls && pwd"
+                sh "docker ps"
             }
         }
         stage('Test') {
