@@ -2,14 +2,14 @@ pipeline {
  agent any
 
     stages {
-        stage('Build') {
+        stage('BuildTEMPLATE') {
             steps {
-                echo 'baigan..'
+                echo 'git checkout qal && CMNT=$(git rev-parse HEAD|cut -b 1-8) && cat k8s/deploy.yaml|sed "s/latest/$CMNT/g" >k8s/deploy.yaml'
             }
         }
         stage('Test') {
             steps {
-                echo 'Testing..'
+                echo 'git add . && git commit -m automated '
             }
         }
         stage('Deploy') {
