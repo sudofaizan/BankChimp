@@ -11,9 +11,10 @@ spec:
       labels:
         app: project1
     spec:
+      
       containers:
       - name: project1
-        image: dexterquazi/app
+        image: nginx
         resources:
           limits:
             memory: "128Mi"
