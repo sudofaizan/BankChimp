@@ -14,7 +14,7 @@ pipeline {
         }
         stage('Deploy') {
             steps {
-                echo 'ls -l k8s/deploy.yaml'
+                echo 'ls && pwd'
              
             }
         }
