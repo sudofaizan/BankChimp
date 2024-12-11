@@ -5,11 +5,11 @@ metadata:
 spec:
   selector:
     matchLabels:
-      app: project11
+      app: project1
   template:
     metadata:
       labels:
-        app: project11
+        app: project1
     spec:
       containers:
       - name: project1
@@ -19,4 +19,4 @@ spec:
             memory: "128Mi"
             cpu: "600m"
         ports:
-        - containerPort: 8080
+        - containerPort: 80
