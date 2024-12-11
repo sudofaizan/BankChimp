@@ -14,7 +14,7 @@ pipeline {
         }
         stage('Deploy') {
             steps {
-                echo 'cat k8s/deploy.yaml'
+                echo 'ls -l k8s/deploy.yaml'
              
             }
         }
